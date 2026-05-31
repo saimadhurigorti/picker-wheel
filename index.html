@@ -1,0 +1,844 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Picker Wheel — Spin to Decide</title>
+<meta name="description" content="Free online picker wheel. Add any options, spin to decide. Yes/No wheel included!">
+<style>
+*{margin:0;padding:0;box-sizing:border-box;}
+:root{
+  --bg:#0f0f1a;--surface:#1a1a2e;--surface2:#16213e;
+  --accent:#e94560;--green:#2b9348;--yellow:#e9c46a;
+  --text:#eaeaea;--text2:#a0a0b0;--border:#2a2a4a;--r:12px;
+}
+body{font-family:'Segoe UI',system-ui,sans-serif;background:var(--bg);color:var(--text);min-height:100vh;}
+
+/* HEADER */
+header{text-align:center;padding:28px 20px 8px;}
+header h1{font-size:clamp(24px,5vw,40px);font-weight:900;letter-spacing:-1px;}
+header h1 span{color:var(--accent);}
+header p{color:var(--text2);margin-top:4px;font-size:14px;}
+
+/* SETTINGS BAR */
+.settings-bar{display:flex;gap:12px;align-items:center;flex-wrap:wrap;padding:12px 20px;max-width:1120px;margin:0 auto;}
+.toggle-row{display:flex;align-items:center;gap:8px;cursor:pointer;user-select:none;}
+.toggle-label{font-size:13px;color:var(--text);}
+.toggle{position:relative;width:42px;height:22px;flex-shrink:0;}
+.toggle input{opacity:0;width:0;height:0;}
+.toggle-slider{position:absolute;inset:0;background:var(--border);border-radius:22px;cursor:pointer;transition:background .2s;}
+.toggle-slider:before{content:'';position:absolute;width:16px;height:16px;left:3px;bottom:3px;background:#fff;border-radius:50%;transition:transform .2s;}
+.toggle input:checked+.toggle-slider{background:var(--accent);}
+.toggle input:checked+.toggle-slider:before{transform:translateX(20px);}
+.share-btn,.icon-btn{background:var(--surface);color:var(--text);border:1px solid var(--border);border-radius:8px;padding:7px 14px;cursor:pointer;font-size:13px;transition:all .2s;display:flex;align-items:center;gap:6px;}
+.share-btn:hover,.icon-btn:hover{border-color:var(--accent);color:var(--accent);}
+
+/* TABS */
+.tabs{display:flex;gap:4px;padding:16px 20px 0;max-width:1120px;margin:0 auto;}
+.tab-btn{padding:11px 26px;border:none;background:var(--surface);color:var(--text2);border-radius:var(--r) var(--r) 0 0;cursor:pointer;font-size:14px;font-weight:600;transition:all .2s;}
+.tab-btn.active{background:var(--surface2);color:var(--accent);border-bottom:2px solid var(--accent);}
+
+/* TAB CONTENT */
+.tab-content{display:none;background:var(--surface2);border-radius:0 var(--r) var(--r) var(--r);padding:24px;max-width:1120px;margin:0 auto 20px;gap:28px;flex-wrap:wrap;}
+.tab-content.active{display:flex;}
+
+/* WHEEL AREA */
+.wheel-wrap{position:relative;display:flex;flex-direction:column;align-items:center;gap:14px;flex-shrink:0;}
+.pointer{position:absolute;top:-6px;left:50%;transform:translateX(-50%);width:0;height:0;border-left:13px solid transparent;border-right:13px solid transparent;border-top:34px solid var(--accent);filter:drop-shadow(0 2px 6px rgba(233,69,96,.5));z-index:10;}
+canvas{border-radius:50%;box-shadow:0 0 50px rgba(233,69,96,.25);}
+.spin-btn{background:linear-gradient(135deg,var(--accent),#ff6b6b);color:#fff;border:none;padding:14px 52px;border-radius:50px;font-size:17px;font-weight:800;cursor:pointer;box-shadow:0 4px 20px rgba(233,69,96,.4);transition:transform .1s,box-shadow .1s;letter-spacing:2px;}
+.spin-btn:hover{transform:translateY(-2px);box-shadow:0 6px 28px rgba(233,69,96,.55);}
+.spin-btn:active{transform:translateY(0);}
+.spin-btn:disabled{opacity:.45;cursor:not-allowed;transform:none;}
+
+/* CONTROLS */
+.controls{flex:1;min-width:270px;display:flex;flex-direction:column;gap:14px;}
+.panel{background:var(--surface);border-radius:var(--r);padding:16px;}
+.panel-header{display:flex;justify-content:space-between;align-items:center;margin-bottom:12px;}
+.panel-header h3{font-size:11px;text-transform:uppercase;letter-spacing:1.2px;color:var(--text2);}
+.clear-btn{background:none;border:1px solid var(--border);color:var(--text2);border-radius:6px;padding:4px 10px;cursor:pointer;font-size:11px;transition:all .2s;}
+.clear-btn:hover{border-color:#ff4444;color:#ff4444;}
+
+/* INPUT ROW */
+.input-row{display:flex;gap:8px;margin-bottom:10px;}
+.input-row input{flex:1;background:var(--bg);border:1px solid var(--border);border-radius:8px;padding:10px 14px;color:var(--text);font-size:14px;outline:none;transition:border-color .2s;}
+.input-row input:focus{border-color:var(--accent);}
+.input-row input::placeholder{color:var(--text2);}
+.add-btn{background:var(--accent);color:#fff;border:none;border-radius:8px;padding:10px 16px;cursor:pointer;font-size:20px;font-weight:bold;transition:background .2s;line-height:1;}
+.add-btn:hover{background:#ff6b6b;}
+
+/* ITEMS LIST */
+.items-list{display:flex;flex-direction:column;gap:5px;max-height:240px;overflow-y:auto;}
+.item-row{display:flex;align-items:center;gap:8px;background:var(--bg);border-radius:8px;padding:8px 10px;animation:slideIn .2s ease;}
+@keyframes slideIn{from{opacity:0;transform:translateX(-8px);}to{opacity:1;transform:translateX(0);}}
+.item-color{width:13px;height:13px;border-radius:50%;flex-shrink:0;}
+.item-label{flex:1;font-size:14px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
+.item-remove{background:none;border:none;color:var(--text2);cursor:pointer;font-size:14px;padding:2px 7px;border-radius:4px;transition:color .2s,background .2s;}
+.item-remove:hover{color:var(--accent);background:rgba(233,69,96,.12);}
+
+/* SLIDERS */
+.slider-row{display:flex;flex-direction:column;gap:6px;margin-bottom:8px;}
+.slider-label{font-size:13px;display:flex;justify-content:space-between;align-items:center;}
+.slider-label span{color:var(--accent);font-weight:700;font-size:16px;min-width:20px;text-align:right;}
+input[type=range]{width:100%;accent-color:var(--accent);cursor:pointer;}
+
+/* HISTORY */
+.history-list{display:flex;flex-direction:column;gap:3px;max-height:140px;overflow-y:auto;}
+.history-item{display:flex;align-items:center;gap:8px;font-size:12px;padding:5px 0;border-bottom:1px solid var(--border);}
+.result-dot{width:8px;height:8px;border-radius:50%;flex-shrink:0;}
+.history-empty{color:var(--text2);font-size:13px;text-align:center;padding:8px 0;}
+
+/* STATS */
+.stats-bar{display:flex;gap:16px;flex-wrap:wrap;margin-top:4px;}
+.stat{background:var(--bg);border-radius:8px;padding:8px 14px;text-align:center;}
+.stat-val{font-size:20px;font-weight:800;color:var(--accent);}
+.stat-lbl{font-size:10px;color:var(--text2);text-transform:uppercase;letter-spacing:.8px;}
+
+/* MODAL */
+.modal-overlay{position:fixed;inset:0;background:rgba(0,0,0,.78);display:flex;align-items:center;justify-content:center;z-index:1000;opacity:0;pointer-events:none;transition:opacity .3s;}
+.modal-overlay.show{opacity:1;pointer-events:all;}
+.modal{background:var(--surface2);border-radius:22px;padding:40px 36px;text-align:center;max-width:420px;width:90%;transform:scale(.8);transition:transform .35s cubic-bezier(.34,1.56,.64,1);border:2px solid var(--accent);box-shadow:0 0 70px rgba(233,69,96,.25);}
+.modal-overlay.show .modal{transform:scale(1);}
+.modal-emoji{font-size:64px;margin-bottom:10px;display:block;animation:popIn .4s cubic-bezier(.34,1.56,.64,1);}
+@keyframes popIn{from{transform:scale(0);}to{transform:scale(1);}}
+.modal-title{font-size:14px;color:var(--text2);margin-bottom:8px;text-transform:uppercase;letter-spacing:1px;}
+.modal-result{font-size:36px;font-weight:900;color:var(--accent);margin-bottom:26px;word-break:break-word;line-height:1.2;}
+.modal-btns{display:flex;gap:12px;justify-content:center;flex-wrap:wrap;}
+.modal-btn{padding:12px 26px;border-radius:50px;border:none;cursor:pointer;font-size:15px;font-weight:600;transition:all .2s;}
+.modal-btn.primary{background:var(--accent);color:#fff;}
+.modal-btn.secondary{background:var(--surface);color:var(--text);}
+.modal-btn:hover{opacity:.85;transform:translateY(-1px);}
+
+/* CONFETTI CANVAS */
+#confetti-canvas{position:fixed;inset:0;pointer-events:none;z-index:999;}
+
+/* TOAST */
+.toast{position:fixed;bottom:24px;left:50%;transform:translateX(-50%) translateY(70px);background:var(--surface2);border:1px solid var(--accent);color:var(--text);padding:11px 22px;border-radius:50px;font-size:13px;z-index:2000;transition:transform .3s;white-space:nowrap;}
+.toast.show{transform:translateX(-50%) translateY(0);}
+
+/* PROB BAR */
+.prob-row{margin-bottom:10px;}
+.prob-row-label{display:flex;justify-content:space-between;font-size:13px;margin-bottom:4px;}
+.prob-bar-track{height:10px;border-radius:5px;background:var(--border);}
+.prob-bar-fill{height:100%;border-radius:5px;transition:width .4s;}
+
+::-webkit-scrollbar{width:5px;}
+::-webkit-scrollbar-track{background:transparent;}
+::-webkit-scrollbar-thumb{background:var(--border);border-radius:3px;}
+
+@media(max-width:680px){
+  .tab-content.active{flex-direction:column;align-items:center;}
+  canvas{width:300px!important;height:300px!important;}
+  .spin-btn{padding:12px 40px;font-size:15px;}
+}
+</style>
+</head>
+<body>
+
+<canvas id="confetti-canvas"></canvas>
+
+<header>
+  <h1>🎡 Picker <span>Wheel</span></h1>
+  <p>Spin the wheel — let fate decide!</p>
+</header>
+
+<!-- SETTINGS BAR -->
+<div class="settings-bar">
+  <label class="toggle-row">
+    <span class="toggle-label">🎉 Confetti</span>
+    <label class="toggle"><input type="checkbox" id="confettiToggle" checked><span class="toggle-slider"></span></label>
+  </label>
+  <label class="toggle-row">
+    <span class="toggle-label">🔊 Sound</span>
+    <label class="toggle"><input type="checkbox" id="soundToggle" checked><span class="toggle-slider"></span></label>
+  </label>
+  <label class="toggle-row">
+    <span class="toggle-label">🌈 Rainbow</span>
+    <label class="toggle"><input type="checkbox" id="rainbowToggle"><span class="toggle-slider"></span></label>
+  </label>
+  <label class="toggle-row">
+    <span class="toggle-label">🗑 Remove Winner</span>
+    <label class="toggle"><input type="checkbox" id="removeWinnerToggle"><span class="toggle-slider"></span></label>
+  </label>
+  <button class="share-btn" onclick="shareWheel()">🔗 Share Wheel</button>
+  <button class="icon-btn" onclick="resetHistory()">🗑 Clear History</button>
+</div>
+
+<!-- TABS -->
+<div class="tabs">
+  <button class="tab-btn active" onclick="switchTab('picker')">🎯 Picker Wheel</button>
+  <button class="tab-btn" onclick="switchTab('yesno')">✅ Yes / No Wheel</button>
+</div>
+
+<!-- ═══ PICKER TAB ═══ -->
+<div id="tab-picker" class="tab-content active">
+  <div class="wheel-wrap">
+    <div class="pointer"></div>
+    <canvas id="pickerCanvas" width="420" height="420"></canvas>
+    <button class="spin-btn" id="pickerSpinBtn" onclick="spinPicker()">SPIN !</button>
+  </div>
+
+  <div class="controls">
+    <div class="panel">
+      <div class="panel-header">
+        <h3>Options (<span id="pickerCount">0</span>)</h3>
+        <button class="clear-btn" onclick="clearPicker()">Clear All</button>
+      </div>
+      <div class="input-row">
+        <input type="text" id="pickerInput" placeholder="Type an option, press Enter…"
+               onkeydown="if(event.key==='Enter')addPickerItem()">
+        <button class="add-btn" onclick="addPickerItem()">+</button>
+      </div>
+      <div class="items-list" id="pickerList"></div>
+    </div>
+
+    <div class="panel">
+      <div class="panel-header"><h3>Quick Presets</h3></div>
+      <div style="display:flex;gap:6px;flex-wrap:wrap;">
+        <button class="icon-btn" onclick="loadPreset('food')">🍕 Food</button>
+        <button class="icon-btn" onclick="loadPreset('days')">📅 Days</button>
+        <button class="icon-btn" onclick="loadPreset('numbers')">🔢 1–10</button>
+        <button class="icon-btn" onclick="loadPreset('colors')">🎨 Colors</button>
+        <button class="icon-btn" onclick="loadPreset('animals')">🐾 Animals</button>
+      </div>
+    </div>
+
+    <div class="panel">
+      <div class="panel-header"><h3>Session Stats</h3></div>
+      <div class="stats-bar">
+        <div class="stat"><div class="stat-val" id="statSpins">0</div><div class="stat-lbl">Spins</div></div>
+        <div class="stat"><div class="stat-val" id="statUnique">0</div><div class="stat-lbl">Unique Results</div></div>
+        <div class="stat"><div class="stat-val" id="statTop">—</div><div class="stat-lbl">Top Result</div></div>
+      </div>
+    </div>
+
+    <div class="panel">
+      <div class="panel-header"><h3>History</h3></div>
+      <div class="history-list" id="pickerHistory"><p class="history-empty">No spins yet…</p></div>
+    </div>
+  </div>
+</div>
+
+<!-- ═══ YES/NO TAB ═══ -->
+<div id="tab-yesno" class="tab-content">
+  <div class="wheel-wrap">
+    <div class="pointer"></div>
+    <canvas id="yesnoCanvas" width="420" height="420"></canvas>
+    <button class="spin-btn" id="yesnoSpinBtn" onclick="spinYesNo()">SPIN !</button>
+  </div>
+
+  <div class="controls">
+    <div class="panel">
+      <div class="panel-header"><h3>Customize Segments</h3></div>
+      <div class="slider-row">
+        <div class="slider-label">✅ YES <span id="yesCount">3</span></div>
+        <input type="range" id="yesSlider" min="1" max="12" value="3" oninput="updateYesNo()">
+      </div>
+      <div class="slider-row">
+        <div class="slider-label">❌ NO <span id="noCount">3</span></div>
+        <input type="range" id="noSlider" min="1" max="12" value="3" oninput="updateYesNo()">
+      </div>
+      <div class="slider-row">
+        <div class="slider-label">🤔 MAYBE <span id="maybeCount">0</span></div>
+        <input type="range" id="maybeSlider" min="0" max="6" value="0" oninput="updateYesNo()">
+      </div>
+    </div>
+
+    <div class="panel">
+      <div class="panel-header"><h3>Probability</h3></div>
+      <div id="probDisplay"></div>
+    </div>
+
+    <div class="panel">
+      <div class="panel-header"><h3>Session Stats</h3></div>
+      <div class="stats-bar">
+        <div class="stat"><div class="stat-val" id="ynStatSpins">0</div><div class="stat-lbl">Spins</div></div>
+        <div class="stat"><div class="stat-val" id="ynStatYes">0</div><div class="stat-lbl">YES</div></div>
+        <div class="stat"><div class="stat-val" id="ynStatNo">0</div><div class="stat-lbl">NO</div></div>
+        <div class="stat"><div class="stat-val" id="ynStatMaybe">0</div><div class="stat-lbl">MAYBE</div></div>
+      </div>
+    </div>
+
+    <div class="panel">
+      <div class="panel-header"><h3>History</h3></div>
+      <div class="history-list" id="yesnoHistory"><p class="history-empty">No spins yet…</p></div>
+    </div>
+  </div>
+</div>
+
+<!-- RESULT MODAL -->
+<div class="modal-overlay" id="resultModal" onclick="if(event.target===this)closeModal()">
+  <div class="modal">
+    <span class="modal-emoji" id="modalEmoji">🎉</span>
+    <div class="modal-title">The wheel has chosen…</div>
+    <div class="modal-result" id="modalResult">Result</div>
+    <div class="modal-btns">
+      <button class="modal-btn primary"
+        onclick="closeModal();setTimeout(()=>activeTab==='picker'?spinPicker():spinYesNo(),350)">
+        🔄 Spin Again
+      </button>
+      <button class="modal-btn secondary" onclick="closeModal()">Close</button>
+    </div>
+  </div>
+</div>
+
+<div class="toast" id="toast"></div>
+
+<script>
+// ═══════════════════════════════════════════
+// STATE
+// ═══════════════════════════════════════════
+let activeTab = 'picker';
+let pickerItems = [];
+let pickerHistory = [], yesnoHistory = [];
+let pickerSpinning = false, yesnoSpinning = false;
+let pickerAngle = 0, yesnoAngle = 0;
+let yesnoItems = [];
+let spinCount = 0, ynSpinCount = 0;
+let ynYesCount = 0, ynNoCount = 0, ynMaybeCount = 0;
+let resultCounts = {};
+
+const PALETTE = [
+  '#e94560','#533483','#2b9348','#f4a261','#0f3460',
+  '#e9c46a','#e76f51','#2a9d8f','#8338ec','#3a86ff',
+  '#ff006e','#fb5607','#06d6a0','#ef476f','#118ab2',
+  '#ffbe0b','#264653','#ff9f1c','#c77dff','#4cc9f0'
+];
+const RAINBOW = [
+  '#ff0000','#ff6600','#ffcc00','#33cc33','#0099ff',
+  '#6600cc','#ff0099','#ff3300','#ff9900','#ffff00'
+];
+
+// ═══════════════════════════════════════════
+// TABS
+// ═══════════════════════════════════════════
+function switchTab(tab) {
+  activeTab = tab;
+  document.querySelectorAll('.tab-btn').forEach((b, i) => {
+    b.classList.toggle('active', (i===0 && tab==='picker') || (i===1 && tab==='yesno'));
+  });
+  document.getElementById('tab-picker').classList.toggle('active', tab==='picker');
+  document.getElementById('tab-yesno').classList.toggle('active', tab==='yesno');
+}
+
+// ═══════════════════════════════════════════
+// PICKER — ITEMS
+// ═══════════════════════════════════════════
+function getColors() {
+  return document.getElementById('rainbowToggle').checked ? RAINBOW : PALETTE;
+}
+
+function addPickerItem() {
+  const inp = document.getElementById('pickerInput');
+  const val = inp.value.trim();
+  if (!val) { showToast('⚠️ Type something first!'); return; }
+  const colors = getColors();
+  pickerItems.push({ label: val, color: colors[pickerItems.length % colors.length] });
+  inp.value = '';
+  refreshPicker();
+  inp.focus();
+}
+
+function removePickerItem(i) {
+  pickerItems.splice(i, 1);
+  refreshPicker();
+}
+
+function clearPicker() {
+  pickerItems = [];
+  resultCounts = {};
+  refreshPicker();
+}
+
+function refreshPicker() {
+  const colors = getColors();
+  pickerItems.forEach((it, i) => it.color = colors[i % colors.length]);
+  document.getElementById('pickerCount').textContent = pickerItems.length;
+  const list = document.getElementById('pickerList');
+  list.innerHTML = '';
+  pickerItems.forEach((item, i) => {
+    const div = document.createElement('div');
+    div.className = 'item-row';
+    div.innerHTML = `
+      <div class="item-color" style="background:${item.color}"></div>
+      <span class="item-label">${esc(item.label)}</span>
+      <button class="item-remove" onclick="removePickerItem(${i})" title="Remove">✕</button>`;
+    list.appendChild(div);
+  });
+  drawPicker();
+}
+
+// ═══════════════════════════════════════════
+// PICKER — DRAW
+// ═══════════════════════════════════════════
+function drawPicker(highlightIdx = -1) {
+  const cvs = document.getElementById('pickerCanvas');
+  const ctx = cvs.getContext('2d');
+  const W = cvs.width, H = cvs.height, cx = W/2, cy = H/2, r = W/2 - 10;
+  ctx.clearRect(0, 0, W, H);
+
+  if (pickerItems.length === 0) {
+    ctx.beginPath(); ctx.arc(cx, cy, r, 0, Math.PI*2);
+    ctx.fillStyle = '#1a1a2e'; ctx.fill();
+    ctx.strokeStyle = '#2a2a4a'; ctx.lineWidth = 3; ctx.stroke();
+    ctx.fillStyle = '#a0a0b0'; ctx.textAlign = 'center'; ctx.font = '16px Segoe UI';
+    ctx.fillText('Add items to start!', cx, cy - 10);
+    ctx.font = '13px Segoe UI';
+    ctx.fillText('Type above and press +', cx, cy + 16);
+    drawCenter(ctx, cx, cy, '#e94560'); return;
+  }
+
+  const n = pickerItems.length;
+  const arc = (Math.PI * 2) / n;
+  for (let i = 0; i < n; i++) {
+    const s = pickerAngle + i * arc;
+    const e = s + arc;
+    ctx.beginPath(); ctx.moveTo(cx, cy); ctx.arc(cx, cy, r, s, e); ctx.closePath();
+    ctx.fillStyle = highlightIdx === i ? lighten(pickerItems[i].color, 50) : pickerItems[i].color;
+    ctx.fill();
+    ctx.strokeStyle = 'rgba(0,0,0,.3)'; ctx.lineWidth = 1.5; ctx.stroke();
+
+    // label
+    ctx.save();
+    ctx.translate(cx, cy);
+    ctx.rotate(s + arc / 2);
+    ctx.textAlign = 'right';
+    const fs = Math.min(15, Math.max(8, 190 / n));
+    ctx.font = `bold ${fs}px Segoe UI`;
+    ctx.fillStyle = '#fff';
+    ctx.shadowColor = 'rgba(0,0,0,.7)'; ctx.shadowBlur = 5;
+    const maxCh = Math.max(5, Math.floor(22 - n * 0.5));
+    const lbl = pickerItems[i].label.length > maxCh
+      ? pickerItems[i].label.slice(0, maxCh) + '…'
+      : pickerItems[i].label;
+    ctx.fillText(lbl, r - 14, fs / 3);
+    ctx.restore();
+  }
+  drawCenter(ctx, cx, cy, '#e94560');
+}
+
+function drawCenter(ctx, cx, cy, color) {
+  ctx.beginPath(); ctx.arc(cx, cy, 22, 0, Math.PI*2);
+  ctx.fillStyle = '#0f0f1a'; ctx.fill();
+  ctx.strokeStyle = color; ctx.lineWidth = 3; ctx.stroke();
+  // dot
+  ctx.beginPath(); ctx.arc(cx, cy, 6, 0, Math.PI*2);
+  ctx.fillStyle = color; ctx.fill();
+}
+
+// ═══════════════════════════════════════════
+// PICKER — SPIN
+// ═══════════════════════════════════════════
+function spinPicker() {
+  if (pickerSpinning) return;
+  if (pickerItems.length < 2) { showToast('⚠️ Add at least 2 options!'); return; }
+  pickerSpinning = true;
+  document.getElementById('pickerSpinBtn').disabled = true;
+
+  const extra = Math.PI * 2 * (6 + Math.random() * 8);
+  const dur   = 3500 + Math.random() * 1800;
+  const t0    = performance.now();
+  const a0    = pickerAngle;
+
+  startTickLoop(dur);
+
+  (function frame(now) {
+    const p = Math.min((now - t0) / dur, 1);
+    pickerAngle = a0 + extra * easeOut(p);
+    drawPicker();
+    if (p < 1) { requestAnimationFrame(frame); return; }
+
+    pickerSpinning = false;
+    document.getElementById('pickerSpinBtn').disabled = false;
+
+    const res = getPickerResult();
+    spinCount++;
+    resultCounts[res.label] = (resultCounts[res.label] || 0) + 1;
+    updatePickerStats();
+    addHistory('picker', res);
+
+    // highlight winner briefly before modal
+    drawPicker(pickerItems.indexOf(res));
+
+    // remove winner option if toggled
+    if (document.getElementById('removeWinnerToggle').checked) {
+      setTimeout(() => {
+        const idx = pickerItems.findIndex(it => it.label === res.label);
+        if (idx > -1) pickerItems.splice(idx, 1);
+        refreshPicker();
+      }, 600);
+    }
+
+    setTimeout(() => showResult(res.label, res.color), 300);
+  })(t0);
+}
+
+function getPickerResult() {
+  const n = pickerItems.length;
+  const arc = (Math.PI * 2) / n;
+  const norm = (((-pickerAngle - Math.PI/2) % (Math.PI*2)) + Math.PI*2) % (Math.PI*2);
+  return pickerItems[Math.floor(norm / arc) % n];
+}
+
+function updatePickerStats() {
+  document.getElementById('statSpins').textContent = spinCount;
+  document.getElementById('statUnique').textContent = Object.keys(resultCounts).length;
+  const top = Object.entries(resultCounts).sort((a, b) => b[1] - a[1])[0];
+  document.getElementById('statTop').textContent = top ? top[0].slice(0, 9) : '—';
+}
+
+// ═══════════════════════════════════════════
+// YES / NO WHEEL
+// ═══════════════════════════════════════════
+const YN_COLORS  = { YES: '#2b9348', NO: '#e94560', MAYBE: '#e9c46a' };
+const YN_EMOJIS  = { YES: '✅', NO: '❌', MAYBE: '🤔' };
+
+function buildYesNoItems() {
+  const yes   = +document.getElementById('yesSlider').value;
+  const no    = +document.getElementById('noSlider').value;
+  const maybe = +document.getElementById('maybeSlider').value;
+  document.getElementById('yesCount').textContent   = yes;
+  document.getElementById('noCount').textContent    = no;
+  document.getElementById('maybeCount').textContent = maybe;
+
+  // Build pools then interleave so YES/NO/MAYBE alternate evenly
+  const yesPool   = Array.from({length: yes},   () => ({ label: 'YES',   color: '#2b9348' }));
+  const noPool    = Array.from({length: no},    () => ({ label: 'NO',    color: '#e94560' }));
+  const maybePool = Array.from({length: maybe}, () => ({ label: 'MAYBE', color: '#e9c46a' }));
+  yesnoItems = [];
+  const maxLen = Math.max(yesPool.length, noPool.length, maybePool.length);
+  for (let i = 0; i < maxLen; i++) {
+    if (i < yesPool.length)   yesnoItems.push(yesPool[i]);
+    if (i < noPool.length)    yesnoItems.push(noPool[i]);
+    if (i < maybePool.length) yesnoItems.push(maybePool[i]);
+  }
+  updateProbDisplay(yes, no, maybe);
+}
+
+function updateProbDisplay(yes, no, maybe) {
+  const total = yes + no + maybe;
+  const el = document.getElementById('probDisplay');
+  el.innerHTML = ['YES', 'NO', 'MAYBE'].map(k => {
+    const cnt = k === 'YES' ? yes : k === 'NO' ? no : maybe;
+    if (!cnt) return '';
+    const pct = Math.round(cnt / total * 100);
+    return `<div class="prob-row">
+      <div class="prob-row-label">
+        <span>${YN_EMOJIS[k]} ${k}</span>
+        <span style="color:${YN_COLORS[k]};font-weight:700">${pct}%</span>
+      </div>
+      <div class="prob-bar-track">
+        <div class="prob-bar-fill" style="width:${pct}%;background:${YN_COLORS[k]}"></div>
+      </div>
+    </div>`;
+  }).join('');
+}
+
+function updateYesNo() { buildYesNoItems(); drawYesNo(); }
+
+function drawYesNo(highlightIdx = -1) {
+  const cvs = document.getElementById('yesnoCanvas');
+  const ctx = cvs.getContext('2d');
+  const W = cvs.width, H = cvs.height, cx = W/2, cy = H/2, r = W/2 - 10;
+  ctx.clearRect(0, 0, W, H);
+  const n = yesnoItems.length;
+  if (!n) return;
+  const arc = (Math.PI * 2) / n;
+  for (let i = 0; i < n; i++) {
+    const s = yesnoAngle + i * arc, e = s + arc;
+    ctx.beginPath(); ctx.moveTo(cx, cy); ctx.arc(cx, cy, r, s, e); ctx.closePath();
+    ctx.fillStyle = highlightIdx === i ? lighten(yesnoItems[i].color, 50) : yesnoItems[i].color;
+    ctx.fill();
+    ctx.strokeStyle = 'rgba(0,0,0,.3)'; ctx.lineWidth = 1.5; ctx.stroke();
+    ctx.save();
+    ctx.translate(cx, cy); ctx.rotate(s + arc/2);
+    ctx.textAlign = 'right';
+    const fs = Math.min(18, Math.max(9, 175 / n));
+    ctx.font = `bold ${fs}px Segoe UI`;
+    ctx.fillStyle = '#fff';
+    ctx.shadowColor = 'rgba(0,0,0,.7)'; ctx.shadowBlur = 5;
+    ctx.fillText(yesnoItems[i].label, r - 14, fs / 3);
+    ctx.restore();
+  }
+  drawCenter(ctx, cx, cy, '#2b9348');
+}
+
+function spinYesNo() {
+  if (yesnoSpinning) return;
+  yesnoSpinning = true;
+  document.getElementById('yesnoSpinBtn').disabled = true;
+
+  const extra = Math.PI * 2 * (6 + Math.random() * 8);
+  const dur   = 3500 + Math.random() * 1800;
+  const t0    = performance.now(), a0 = yesnoAngle;
+
+  startTickLoop(dur);
+
+  (function frame(now) {
+    const p = Math.min((now - t0) / dur, 1);
+    yesnoAngle = a0 + extra * easeOut(p);
+    drawYesNo();
+    if (p < 1) { requestAnimationFrame(frame); return; }
+
+    yesnoSpinning = false;
+    document.getElementById('yesnoSpinBtn').disabled = false;
+    const res = getYesNoResult();
+    ynSpinCount++;
+    if (res.label === 'YES')   ynYesCount++;
+    if (res.label === 'NO')    ynNoCount++;
+    if (res.label === 'MAYBE') ynMaybeCount++;
+    document.getElementById('ynStatSpins').textContent = ynSpinCount;
+    document.getElementById('ynStatYes').textContent   = ynYesCount;
+    document.getElementById('ynStatNo').textContent    = ynNoCount;
+    document.getElementById('ynStatMaybe').textContent = ynMaybeCount;
+    drawYesNo(yesnoItems.indexOf(res));
+    addHistory('yesno', res);
+    setTimeout(() => showResult(res.label, res.color), 300);
+  })(t0);
+}
+
+function getYesNoResult() {
+  const n = yesnoItems.length, arc = (Math.PI * 2) / n;
+  const norm = (((-yesnoAngle - Math.PI/2) % (Math.PI*2)) + Math.PI*2) % (Math.PI*2);
+  return yesnoItems[Math.floor(norm / arc) % n];
+}
+
+// ═══════════════════════════════════════════
+// HISTORY
+// ═══════════════════════════════════════════
+function addHistory(type, item) {
+  const arr = type === 'picker' ? pickerHistory : yesnoHistory;
+  arr.unshift({ label: item.label, color: item.color, time: new Date().toLocaleTimeString() });
+  if (arr.length > 40) arr.pop();
+  renderHistory(type);
+}
+function renderHistory(type) {
+  const arr = type === 'picker' ? pickerHistory : yesnoHistory;
+  const el  = document.getElementById(type + 'History');
+  if (!arr.length) { el.innerHTML = '<p class="history-empty">No spins yet…</p>'; return; }
+  el.innerHTML = arr.map(h => `
+    <div class="history-item">
+      <div class="result-dot" style="background:${h.color}"></div>
+      <span style="flex:1;color:var(--text)">${esc(h.label)}</span>
+    </div>`).join('');
+}
+function resetHistory() {
+  pickerHistory = []; yesnoHistory = [];
+  renderHistory('picker'); renderHistory('yesno');
+  showToast('🗑 History cleared');
+}
+
+// ═══════════════════════════════════════════
+// RESULT MODAL
+// ═══════════════════════════════════════════
+const YN_EMOJI_MAP = { YES: '✅', NO: '❌', MAYBE: '🤔' };
+const CELEBRATE = ['🎉','🥳','🎊','⭐','🔥','💥','✨','🏆','🌟','🎈'];
+
+function showResult(label, color) {
+  const emoji = YN_EMOJI_MAP[label] || CELEBRATE[Math.floor(Math.random() * CELEBRATE.length)];
+  document.getElementById('modalEmoji').textContent = emoji;
+  document.getElementById('modalResult').textContent = label;
+  document.getElementById('modalResult').style.color = color;
+  document.getElementById('resultModal').classList.add('show');
+  if (document.getElementById('confettiToggle').checked) launchConfetti(color);
+  playWinSound(label);
+}
+function closeModal() {
+  document.getElementById('resultModal').classList.remove('show');
+  stopConfetti();
+}
+
+// ═══════════════════════════════════════════
+// CONFETTI
+// ═══════════════════════════════════════════
+const cc  = document.getElementById('confetti-canvas');
+const ccx = cc.getContext('2d');
+let cParts = [], cRunning = false, cRAF;
+
+function resizeCC() { cc.width = innerWidth; cc.height = innerHeight; }
+resizeCC(); window.addEventListener('resize', resizeCC);
+
+function launchConfetti(accent) {
+  stopConfetti();
+  const cols = [accent, '#fff', '#ffd700', '#ff6b6b', '#74c7ec', '#b5ead7', '#f9c74f', '#90be6d', '#ff9ff3'];
+  for (let i = 0; i < 260; i++) {
+    cParts.push({
+      x: Math.random() * cc.width,
+      y: -20 - Math.random() * 300,
+      w: 5 + Math.random() * 10,
+      h: 3 + Math.random() * 6,
+      color: cols[i % cols.length],
+      rot: Math.random() * Math.PI * 2,
+      rs: (Math.random() - .5) * .2,
+      vx: (Math.random() - .5) * 6,
+      vy: 2 + Math.random() * 4,
+      op: 1,
+      shape: Math.random() > .35 ? 'rect' : 'circle'
+    });
+  }
+  cRunning = true;
+  animateC();
+}
+
+function animateC() {
+  if (!cRunning) return;
+  ccx.clearRect(0, 0, cc.width, cc.height);
+  cParts.forEach(p => {
+    p.x += p.vx; p.y += p.vy; p.rot += p.rs; p.vy += 0.07;
+    if (p.y > cc.height - 100) p.op -= 0.022;
+    ccx.save();
+    ccx.globalAlpha = Math.max(0, p.op);
+    ccx.translate(p.x, p.y); ccx.rotate(p.rot);
+    ccx.fillStyle = p.color;
+    if (p.shape === 'circle') { ccx.beginPath(); ccx.arc(0, 0, p.w/2, 0, Math.PI*2); ccx.fill(); }
+    else ccx.fillRect(-p.w/2, -p.h/2, p.w, p.h);
+    ccx.restore();
+  });
+  cParts = cParts.filter(p => p.op > 0);
+  if (cParts.length) cRAF = requestAnimationFrame(animateC);
+  else cRunning = false;
+}
+function stopConfetti() {
+  cRunning = false;
+  cancelAnimationFrame(cRAF);
+  ccx.clearRect(0, 0, cc.width, cc.height);
+  cParts = [];
+}
+
+// ═══════════════════════════════════════════
+// SOUND  (Web Audio API — no files needed)
+// ═══════════════════════════════════════════
+let audioCtx, tickTimer;
+
+function getAC() {
+  if (!audioCtx) audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+  return audioCtx;
+}
+
+function startTickLoop(duration) {
+  if (!document.getElementById('soundToggle').checked) return;
+  clearInterval(tickTimer);
+  const ctx = getAC();
+  let elapsed = 0, interval = 110;
+
+  tickTimer = setInterval(() => {
+    elapsed += interval;
+    const progress = elapsed / duration;
+    const freq = 180 + Math.sin(progress * Math.PI) * 700;
+    playTick(ctx, freq);
+    interval = progress < 0.5
+      ? Math.max(35, interval - 4)
+      : Math.min(220, interval + 9);
+    if (elapsed >= duration) clearInterval(tickTimer);
+  }, interval);
+}
+
+function playTick(ctx, freq) {
+  const o = ctx.createOscillator(), g = ctx.createGain();
+  o.connect(g); g.connect(ctx.destination);
+  o.type = 'triangle'; o.frequency.value = freq;
+  g.gain.setValueAtTime(0.08, ctx.currentTime);
+  g.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + 0.05);
+  o.start(); o.stop(ctx.currentTime + 0.05);
+}
+
+function playWinSound(label) {
+  if (!document.getElementById('soundToggle').checked) return;
+  const ctx = getAC();
+  const seqs = {
+    YES:   [523, 659, 784, 1047, 1319],
+    NO:    [400, 340, 280],
+    MAYBE: [440, 494, 440, 523]
+  };
+  const seq = seqs[label] || seqs.YES;
+  seq.forEach((f, i) => {
+    const o = ctx.createOscillator(), g = ctx.createGain();
+    o.connect(g); g.connect(ctx.destination);
+    o.type = 'sine'; o.frequency.value = f;
+    const t = ctx.currentTime + i * 0.12;
+    g.gain.setValueAtTime(0, t);
+    g.gain.linearRampToValueAtTime(0.22, t + 0.04);
+    g.gain.exponentialRampToValueAtTime(0.001, t + 0.35);
+    o.start(t); o.stop(t + 0.38);
+  });
+}
+
+// ═══════════════════════════════════════════
+// PRESETS
+// ═══════════════════════════════════════════
+const PRESETS = {
+  food:    ['🍕 Pizza','🍔 Burger','🍣 Sushi','🌮 Tacos','🍜 Noodles','🥗 Salad','🍗 Chicken','🌯 Wrap','🍱 Bento','🥪 Sandwich'],
+  days:    ['Monday','Tuesday','Wednesday','Thursday','Friday','Saturday','Sunday'],
+  numbers: ['1','2','3','4','5','6','7','8','9','10'],
+  colors:  ['Red','Orange','Yellow','Green','Blue','Indigo','Violet','Pink','Cyan','Magenta'],
+  animals: ['🐶 Dog','🐱 Cat','🐼 Panda','🦊 Fox','🐸 Frog','🦁 Lion','🐧 Penguin','🦄 Unicorn']
+};
+
+function loadPreset(key) {
+  clearPicker();
+  PRESETS[key].forEach(label => {
+    const c = getColors();
+    pickerItems.push({ label, color: c[pickerItems.length % c.length] });
+  });
+  refreshPicker();
+  showToast('✅ Preset loaded!');
+}
+
+// ═══════════════════════════════════════════
+// SHARE via URL
+// ═══════════════════════════════════════════
+function shareWheel() {
+  if (!pickerItems.length) { showToast('⚠️ Add items first!'); return; }
+  const url = `${location.origin}${location.pathname}?items=${encodeURIComponent(pickerItems.map(i => i.label).join('|'))}`;
+  navigator.clipboard.writeText(url).then(() => showToast('🔗 Link copied to clipboard!'));
+}
+
+function loadFromURL() {
+  const raw = new URLSearchParams(location.search).get('items');
+  if (!raw) return;
+  raw.split('|').forEach(l => {
+    if (l.trim()) {
+      const c = getColors();
+      pickerItems.push({ label: l.trim(), color: c[pickerItems.length % c.length] });
+    }
+  });
+  refreshPicker();
+  showToast('🔗 Wheel loaded from link!');
+}
+
+// ═══════════════════════════════════════════
+// UTILS
+// ═══════════════════════════════════════════
+function easeOut(t) { return 1 - Math.pow(1 - t, 4); }
+function esc(s) { return s.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;'); }
+function lighten(hex, a) {
+  const r = parseInt(hex.slice(1,3),16), g = parseInt(hex.slice(3,5),16), b = parseInt(hex.slice(5,7),16);
+  return `rgb(${Math.min(255,r+a)},${Math.min(255,g+a)},${Math.min(255,b+a)})`;
+}
+
+let toastTimer;
+function showToast(msg) {
+  const t = document.getElementById('toast');
+  t.textContent = msg;
+  t.classList.add('show');
+  clearTimeout(toastTimer);
+  toastTimer = setTimeout(() => t.classList.remove('show'), 2600);
+}
+
+// rainbow recolors wheel live
+document.getElementById('rainbowToggle').addEventListener('change', refreshPicker);
+
+// ═══════════════════════════════════════════
+// INIT
+// ═══════════════════════════════════════════
+['🍕 Pizza','🍔 Burger','🍣 Sushi','🌮 Tacos','🥗 Salad'].forEach(label => {
+  const c = getColors();
+  pickerItems.push({ label, color: c[pickerItems.length % c.length] });
+});
+refreshPicker();
+buildYesNoItems();
+drawYesNo();
+loadFromURL();
+</script>
+</body>
+</html>
